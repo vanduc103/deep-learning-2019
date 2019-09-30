@@ -1,1 +1,1 @@
-# deep-learning-2019
+# SNU Deep Learning Class Fall 2019
