@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from Utils.data_utils import plot_conv_images
 
@@ -22,7 +23,51 @@ def conv_forward(x, w, b, conv_param):
     ##############################################################################
     #                          IMPLEMENT YOUR CODE                               #
     ##############################################################################
-    pass
+    N, H, W, C = x.shape
+    #print(x.shape)
+    F, WH, WW, C = w.shape
+    #print(w.shape)
+    stride = conv_param['stride']
+    #print(stride)
+    SH, SW = stride[1], stride[2]
+    padding = conv_param['padding']
+    if padding == 'valid':
+        # no padding
+        PH_top = PH_bottom = 0
+        PW_left = PW_right = 0
+        # output size
+        OH = int((H - WH + 2*0)/SH + 1)
+        OW = int((W - WW + 2*0)/SW + 1)
+        #print(OH, OW)
+    elif padding == 'same':
+        # compute output
+        OH = math.ceil(H/SH)
+        OW = math.ceil(W/SW)
+        # compute padding
+        PH = (OH - 1)*SH - (H - WH)
+        if PH % 2 == 0:
+            PH_top = PH_bottom = int(PH/2)
+        else:
+            PH_top = int(PH/2)
+            PH_bottom = PH - PH_top
+        PW = (OW - 1)*SW - (W - WW)
+        if PW % 2 == 0:
+            PW_left = PW_right = int(PW/2)
+        else:
+            PW_left = int(PW/2)
+            PW_right = PW - PW_left
+        #print(OH, OW)
+        #print(PH_top, PH_bottom, PW_left, PW_right)
+    # padding zeros to x
+    x_pad = np.zeros((N, H + PH_top + PH_bottom, W + PW_left + PW_right, C))
+    x_pad[:, PH_top:H+PH_top, PW_left:W+PW_left, :] = x
+    out = np.zeros((N, OH, OW, F))
+    for i in range(N):
+        for k in range(OH):
+            for l in range(OW):
+                for j in range(F):
+                    out[i, k, l, j] = np.sum(x_pad[i, SH*k:SH*k+WH, SW*l:SW*l+WW, :] * w[j, :, :, :]) + b[j]
+    #pass
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
@@ -72,7 +117,27 @@ def max_pool_forward(x, pool_param):
     ##############################################################################
     #                          IMPLEMENT YOUR CODE                               #
     ##############################################################################
-    pass
+    N, H, W, C = x.shape
+    #print(x.shape)
+    #print(pool_param)
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    stride = pool_param['stride']
+    SH, SW = stride[1], stride[2]
+    # padding == 'valid'
+    PH = 0
+    PW = 0
+    # output size
+    OH = int((H - pool_height + 2*0)/SH + 1)
+    OW = int((W - pool_width + 2*0)/SW + 1)
+    out = np.zeros((N, OH, OW, C))
+    #print(out.shape)
+    for i in range(N):
+        for j in range(C):
+            for k in range(OH):
+                for l in range(OW):
+                    out[i, k, l, j] = np.amax(x[i, k*SH:k*SH+pool_height, l*SW:l*SW+pool_width, j])
+    #pass
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
