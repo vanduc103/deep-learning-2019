@@ -91,7 +91,65 @@ def conv_backward(dout, cache):
     ##############################################################################
     #                          IMPLEMENT YOUR CODE                               #
     ##############################################################################
-    pass
+    (x, w, b, conv_param) = cache
+    N, H, W, C = x.shape
+    F, WH, WW, C = w.shape
+    stride = conv_param['stride']
+    SH, SW = stride[1], stride[2]
+    padding = conv_param['padding']
+    if padding == 'valid':
+        # no padding
+        PH_top = PH_bottom = 0
+        PW_left = PW_right = 0
+        # output size
+        OH = int((H - WH + 2*0)/SH + 1)
+        OW = int((W - WW + 2*0)/SW + 1)
+        #print(OH, OW)
+    elif padding == 'same':
+        # compute output
+        OH = math.ceil(H/SH)
+        OW = math.ceil(W/SW)
+        # compute padding
+        PH = (OH - 1)*SH - (H - WH)
+        if PH % 2 == 0:
+            PH_top = PH_bottom = int(PH/2)
+        else:
+            PH_top = int(PH/2)
+            PH_bottom = PH - PH_top
+        PW = (OW - 1)*SW - (W - WW)
+        if PW % 2 == 0:
+            PW_left = PW_right = int(PW/2)
+        else:
+            PW_left = int(PW/2)
+            PW_right = PW - PW_left
+        #print(OH, OW)
+        #print(PH_top, PH_bottom, PW_left, PW_right)
+    x_pad = np.zeros((N, H + PH_top + PH_bottom, W + PW_left + PW_right, C))
+    x_pad[:, PH_top:H+PH_top, PW_left:W+PW_left, :] = x
+    # compute dw
+    dw = np.zeros(w.shape)
+    for f in range(F):
+        for k in range(OH):
+            for l in range(OW):
+                for i in range(N):
+                    dw[f, :, :, :] += x_pad[i, k*SH:k*SH+WH, l*SW:l*SW+WW, :] * dout[i, k, l, f]
+                    
+    # compute db
+    db = np.zeros(b.shape)
+    for f in range(F):
+        db[f] += np.sum(dout[:, :, :, f])
+        
+    # compute dx
+    dx = np.zeros(x.shape)
+    dx_pad = np.zeros(x_pad.shape)
+    for i in range(N):
+        for k in range(OH):
+            for l in range(OW):
+                for f in range(F):
+                    for c in range(C):
+                        dx_pad[i, k*SH:k*SH+WH, l*SW:l*SW+WW, c] += w[f, :, :, c] * dout[i, k, l, f]
+    dx = dx_pad[:, PH_top:H+PH_top, PW_left:W+PW_left, :]
+    #pass
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
@@ -133,10 +191,10 @@ def max_pool_forward(x, pool_param):
     out = np.zeros((N, OH, OW, C))
     #print(out.shape)
     for i in range(N):
-        for j in range(C):
+        for c in range(C):
             for k in range(OH):
                 for l in range(OW):
-                    out[i, k, l, j] = np.amax(x[i, k*SH:k*SH+pool_height, l*SW:l*SW+pool_width, j])
+                    out[i, k, l, c] = np.amax(x[i, k*SH:k*SH+pool_height, l*SW:l*SW+pool_width, c])
     #pass
     ##############################################################################
     #                             END OF YOUR CODE                               #
@@ -161,7 +219,30 @@ def max_pool_backward(dout, cache):
     ##############################################################################
     #                          IMPLEMENT YOUR CODE                               #
     ##############################################################################
-    pass
+    (x, pool_param) = cache
+    N, H, W, C = x.shape
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    stride = pool_param['stride']
+    SH, SW = stride[1], stride[2]
+    # padding == 'valid'
+    PH = 0
+    PW = 0
+    # output size
+    OH = int((H - pool_height + 2*0)/SH + 1)
+    OW = int((W - pool_width + 2*0)/SW + 1)
+    # compute dx
+    dx = np.zeros(x.shape)
+    for i in range(N):
+        for k in range(OH):
+            for l in range(OW):
+                for c in range(C):
+                    temp = x[i, k*SH:k*SH+pool_height, l*SW:l*SW+pool_width, c]
+                    max_idx = np.unravel_index(np.argmax(temp, axis=None), temp.shape)
+                    temp = np.zeros(temp.shape)
+                    temp[max_idx] = 1
+                    dx[i, k*SH:k*SH+pool_height, l*SW:l*SW+pool_width, c] += temp * dout[i, k, l, c]
+    #pass
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
