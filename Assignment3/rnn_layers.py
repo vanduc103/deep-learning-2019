@@ -117,14 +117,23 @@ def rnn_forward(x, h0, Wx, Wh, b):
     ##########################################################################
     (N, T, D) = x.shape
     (N, H) = h0.shape
-    h_transpose = np.zeros((T, N, H))
+    # first solution
+    '''h_transpose = np.zeros((T, N, H))
     x_transpose = np.transpose(x, (1, 0, 2)) # T, N, D
     prev_h = h0
     for i in range(T):
         h_transpose[i], cache = rnn_step_forward(x_transpose[i], prev_h, Wx, Wh, b)
         prev_h = h_transpose[i]
     h = np.transpose(h_transpose, (1, 0, 2)) # N, T, H
-    cache = (x, h0, Wx, Wh, b, h)
+    cache = (x, h0, Wx, Wh, b, h)'''
+    # another solution
+    cache = {}
+    h = np.zeros((N,T,H))
+    for t in range(T):
+        if t == 0:
+            h[:,t,:], cache[t] = rnn_step_forward(x[:,t,:], h0, Wx, Wh, b)
+        else:
+            h[:,t,:], cache[t] = rnn_step_forward(x[:,t,:], h[:,t-1,:], Wx, Wh, b)
     ##########################################################################
     #                               END OF YOUR CODE                             #
     ##########################################################################
@@ -155,24 +164,47 @@ def rnn_backward(dh, cache):
     # sequence of data. You should use the rnn_step_backward function that you   #
     # defined above.                                                             #
     ##########################################################################
-    (x, h0, Wx, Wh, b, h) = cache
+    # first solution
+    '''(x, h0, Wx, Wh, b, h) = cache
     dx = np.zeros(x.shape)
     dh0 = np.zeros(h0.shape)
     dWx = np.zeros(Wx.shape)
     dWh = np.zeros(Wh.shape)
     db = np.zeros(b.shape)
-    #
+    # 
     dh_transpose = np.transpose(dh, (1, 0, 2)) # T, N, H
     dx_transpose = np.transpose(dx, (1, 0, 2)) # T, N, D
     h_transpose = np.transpose(h, (1, 0, 2)) # T, N, H
     x_transpose = np.transpose(x, (1, 0, 2)) # T, N, D
     #
-    for i in reversed(range(T)):
-        if i == 0:
-            break
-        cache_tmp = (x_transpose[i], h_transpose[i], Wx, Wh, b, h_transpose[i-1]))
-        dx_transpose[i] = rnn_step_backward(dh_transpose[i], cache_tmp)
-
+    dh_prev = np.zeros(dh0.shape)
+    for t in range(dh_transpose.shape[0]-1, -1, -1):
+        if t > 0:
+            cache_tmp = (x_transpose[t], h_transpose[t-1], Wx, Wh, b, h_transpose[t])
+        else:
+            cache_tmp = (x_transpose[t], h0, Wx, Wh, b, h_transpose[t])
+        dx_transpose[t], dh_prev, dWx_t, dWh_t, db_t = rnn_step_backward(dh_transpose[t] + dh_prev, cache_tmp)
+        dWx += dWx_t
+        dWh += dWh_t
+        db  += db_t
+    dx = np.transpose(dx_transpose, (1, 0, 2)) # N, T, D
+    dh0 = dh_prev'''
+    # other solution
+    (x1, h0, Wx, Wh, b, h1) = cache[0]
+    (N, T, H) = dh.shape
+    (N, D) = x1.shape
+    dx = np.zeros((N, T, D))
+    dh0 = np.zeros(h0.shape)
+    dWx = np.zeros(Wx.shape)
+    dWh = np.zeros(Wh.shape)
+    db = np.zeros(b.shape)
+    dh_prev = np.zeros(h0.shape)
+    for t in range(T-1, -1, -1):
+        dx[:,t,:], dh_prev, dWx_t, dWh_t, db_t = rnn_step_backward(dh[:,t,:] + dh_prev, cache[t])
+        dWx += dWx_t
+        dWh += dWh_t
+        db  += db_t
+    dh0 = dh_prev
     ##########################################################################
     #                               END OF YOUR CODE                             #
     ##########################################################################
@@ -271,7 +303,7 @@ def getdata_rnn_backward(x,h0,Wx,Wh,b,dout):
 	fWx = lambda Wx: rnn_forward(x, h0, Wx, Wh, b)[0]
 	fWh = lambda Wh: rnn_forward(x, h0, Wx, Wh, b)[0]
 	fb = lambda b: rnn_forward(x, h0, Wx, Wh, b)[0]
-
+    
 	dx_num = eval_numerical_gradient_array(fx, x, dout)
 	dh0_num = eval_numerical_gradient_array(fh0, h0, dout)
 	dWx_num = eval_numerical_gradient_array(fWx, Wx, dout)
