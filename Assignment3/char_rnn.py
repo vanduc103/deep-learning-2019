@@ -1,6 +1,7 @@
 # This library is used in Assignment3_Part3_CharRNN
 import tensorflow as tf
 from tensorflow.contrib import rnn
+from tensorflow.contrib import legacy_seq2seq
 import numpy as np
 
 # RNN model class definition
@@ -93,14 +94,8 @@ class Model():
         inputs = tf.split(inputs, args.seq_length, 1)
         inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
 
-        # loop function for rnn_decoder, which take the previous i-th cell's output and generate the (i+1)-th cell's input
-        def loop(prev, _):
-            prev = tf.matmul(prev, softmax_w) + softmax_b
-            prev_symbol = tf.stop_gradient(tf.argmax(prev, 1))
-            return tf.nn.embedding_lookup(embedding, prev_symbol)
-
-        # rnn_decoder to generate the ouputs and final state. When we are not training the model, we use the loop function.
-        outputs, last_state = legacy_seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if not training else None, scope='rnnlm')
+        # rnn_decoder to generate the ouputs and final state
+        outputs, last_state = legacy_seq2seq.rnn_decoder(inputs, self.initial_state, cell)
         output = tf.reshape(tf.concat(outputs, 1), [-1, args.rnn_size])
 
         # output layer
@@ -115,7 +110,6 @@ class Model():
         with tf.name_scope('cost'):
             self.cost = tf.reduce_sum(loss) / args.batch_size / args.seq_length
         self.final_state = last_state
-        self.lr = tf.Variable(0.0, trainable=False)
         tvars = tf.trainable_variables()
 
         # calculate gradients
@@ -132,7 +126,7 @@ class Model():
         tf.summary.histogram('loss', loss)
         tf.summary.scalar('train_loss', self.cost)
 
-    def sample(self, sess, chars, vocab, num=200, prime='The '):
+    def sample(self, sess, chars, vocab, num=200, prime='The ', sampling_type=1):
         """
         implement your sampling method from here: give a model an ability to spit out characters from RNN's hidden state.
         You are given the following parameters:
