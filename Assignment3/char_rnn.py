@@ -10,6 +10,7 @@ class Model():
     def __init__(self, args, training=True):
         # get some args
         self.args = args
+        
         # after the end of training, the model will just use batch_size=1 and seq_length=1 for easier code
         # and you don't need to do anything because sample_eval() for evaluation is already given
         if not training:
@@ -98,17 +99,18 @@ class Model():
         outputs, last_state = legacy_seq2seq.rnn_decoder(inputs, self.initial_state, cell)
         output = tf.reshape(tf.concat(outputs, 1), [-1, args.rnn_size])
 
+        # Flatten the targets
+        flat_targets = tf.reshape(tf.concat(axis=1, values=self.targets), [-1])
+
         # output layer
         self.logits = tf.matmul(output, softmax_w) + softmax_b
         self.probs = tf.nn.softmax(self.logits)
 
         # loss is calculate by the log loss and taking the average.
-        loss = legacy_seq2seq.sequence_loss_by_example(
-                [self.logits],
-                [tf.reshape(self.targets, [-1])],
-                [tf.ones([args.batch_size * args.seq_length])])
-        with tf.name_scope('cost'):
-            self.cost = tf.reduce_sum(loss) / args.batch_size / args.seq_length
+        with tf.name_scope('loss'):
+            # Compute mean cross entropy loss for each output.
+            loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=flat_targets)
+            self.cost = tf.reduce_mean(loss)
         self.final_state = last_state
         tvars = tf.trainable_variables()
 
@@ -178,5 +180,6 @@ class Model():
             pred = chars[sample]
             ret += pred
             char = pred
+            
         return ret
     
