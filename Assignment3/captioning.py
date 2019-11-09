@@ -18,6 +18,7 @@ class Captioning():
         self.input_dim = input_dim
         self.wordvec_dim = wordvec_dim
         self.hidden_dim = hidden_dim
+        self.lr = tf.Variable(0.0, trainable=False)
         
     def build_model(self, maxlen):
         self.loss = 0
@@ -29,6 +30,7 @@ class Captioning():
         X = self.captions[:, :-1]
         # caption output = captions except the first word (<START>)
         y = self.captions[:, 1:]
+        
         # mask out the NULL word in caption output
         null_words = tf.zeros_like(y)
         caption_mask = tf.math.not_equal(y, null_words)
@@ -41,9 +43,7 @@ class Captioning():
         
         # use RNN to compute output from initial state h0 => outputs [N, T, hidden_dim]
         rnn_cell = tf.contrib.rnn.BasicRNNCell(self.hidden_dim)
-        #rnn_cell = tf.contrib.rnn.BasicLSTMCell(self.hidden_dim)
         rnn_outputs, rnn_states = tf.nn.dynamic_rnn(rnn_cell, embed, initial_state=h0, dtype=tf.float32)
-        #rnn_outputs, rnn_states = tf.nn.static_rnn(rnn_cell, embed, initial_state=h0, dtype=tf.float32)
         
         # convert rnn output to vocab size
         rnn_outputs = tf.reshape(rnn_outputs, [batch_size * (maxlen-1), self.hidden_dim]) # [N, T, H] => [N*T, H]
@@ -57,7 +57,7 @@ class Captioning():
         self.loss = tf.reduce_mean(tf.boolean_mask(self.loss, mask_reshape))
         
         # optimizer
-        self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
         
     def predict(self):
         captions = None
