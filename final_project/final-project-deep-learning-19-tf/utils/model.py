@@ -1,9 +1,10 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import os, nltk
-from miscc.config import cfg
+from miscc.config import cfg, cfg_from_file
 import numpy as np
 
+cfg_from_file('cfg/train_birds.yml') # eval_birds.yml
 
 def fc(inputs, num_out, name, activation_fn=None, biased=True):
     w_init = tf.random_normal_initializer(stddev=0.02)
@@ -69,9 +70,9 @@ class GENERATOR:
         self.input_rnn = input_rnn
         self.is_training = is_training
         self.reuse = reuse
-        self.t_dim = 128
-        self.gf_dim = 128
-        self.image_size = 256
+        self.t_dim = cfg.TEXT.EMBEDDING_DIM #128
+        self.gf_dim = cfg.GAN.GF_DIM #128
+        self.image_size = cfg.IMAGE_SIZE #256
         self.c_dim = 3
         self._build_model()
 
@@ -147,9 +148,9 @@ class DISCRIMINATOR:
         self.input_rnn = input_rnn
         self.is_training = is_training
         self.reuse = reuse
-        self.df_dim = 64
-        self.t_dim = 128
-        self.image_size = 256
+        self.df_dim = cfg.GAN.DF_DIM #64
+        self.t_dim = cfg.TEXT.EMBEDDING_DIM #128
+        self.image_size = cfg.IMAGE_SIZE #256
         self._build_model()
 
     def _build_model(self):
@@ -216,10 +217,10 @@ class RNN_ENCODER:
         self.input_seqs = input_seqs
         self.is_training = is_training
         self.reuse = reuse
-        self.t_dim = 128  
-        self.rnn_hidden_size = 128
-        self.vocab_size = 8000
-        self.word_embedding_size = 128
+        self.t_dim = cfg.TEXT.EMBEDDING_DIM #128  
+        self.rnn_hidden_size = cfg.RNN.H_DIM #128
+        self.vocab_size = cfg.RNN.VOCAB_SIZE #8000
+        self.word_embedding_size = cfg.RNN.WORD_EMBEDDING_DIM #128
         self.keep_prob = 1.0
         self.batch_size = batch_size
         
@@ -266,8 +267,8 @@ class CNN_ENCODER:
         self.inputs = inputs
         self.is_training = is_training
         self.reuse = reuse
-        self.df_dim = 64
-        self.t_dim = 128
+        self.df_dim = cfg.GAN.DF_DIM #64
+        self.t_dim = cfg.TEXT.EMBEDDING_DIM #128
         self._build_model()
 
     def _build_model(self):
